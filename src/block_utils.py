@@ -117,7 +117,7 @@ def block_fold(blocks, image_shape, block_size, stride, positions):
     for block, (i, j) in zip(blocks, positions):
         output[:, i : i + block_size, j : j + block_size] += block
         count[i : i + block_size, j : j + block_size] += 1
-    count[count == 0] = 1  # avoid division by zero
+    count[count == 0] = 1  
     output = output / count.unsqueeze(0)
     output = output[:, :H_orig, :W_orig]
     return output
