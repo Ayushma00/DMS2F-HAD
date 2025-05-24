@@ -3,11 +3,9 @@ import re
 import random
 import numpy as np
 import torch
-from src.data_loader import HSIDataset, HSIMaskedDataset
+from src.data_loader import HSIDataset
 from src.model import AnomalyDetectionModel
 from src.train import train_model
-from evaluate import evaluate_model
-
 
 
 def main():
@@ -18,17 +16,17 @@ def main():
     torch.backends.cudnn.benchmark = True
 
     dataset_files = [
-        "../Data/abu-beach-1.mat",
-        "../Data/abu-urban-1.mat",
-        "../Data/los-angeles-2.mat",
-        "../Data/aviris_2.mat",
-        "../Data/aviris_1.mat",
+        # "../Data/abu-beach-1.mat",
+        # "../Data/abu-urban-1.mat",
+        # "../Data/los-angeles-2.mat",
+        # "../Data/aviris_2.mat",
+        # "../Data/aviris_1.mat",
         "../Data/Cri.mat",
-        "../Data/gulfport.mat",
-        "../Data/San_Diego.mat",
+        # "../Data/gulfport.mat",
+        # "../Data/San_Diego.mat",
     ]
 
-    # Hyperparameters
+    # [Hyperparameters]
     block_size = 16
     stride = 8
     epochs = 150
@@ -36,12 +34,9 @@ def main():
     lr = 1e-3
     weight_decay = 6.938599279960116e-05
 
-
     for data_path in dataset_files:
         ds_name = re.sub(r"\.mat$", "", os.path.basename(data_path))
         print(f"\n\n=== PROCESSING DATASET: {ds_name} ===")
-
-        
 
         dataset = HSIDataset(
             mat_file=data_path,
@@ -72,8 +67,8 @@ def main():
             batch_sz=batch_size,
             lr=lr,
             wd=weight_decay,
+            eval_dataset_path="../Data/HAD100Dataset/"  
         )
-        evaluate_model(trained_model, dataset, f"{ds_name}")
 
 
 if __name__ == "__main__":

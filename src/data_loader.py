@@ -3,8 +3,8 @@ from torch.utils.data import Dataset
 import numpy as np
 from scipy.io import loadmat
 import h5py
-from mask import Mask
-from block_utils import block_embedding
+from src.mask import Mask
+from src.block_utils import block_embedding
 
 
 class HSIDataset(Dataset):

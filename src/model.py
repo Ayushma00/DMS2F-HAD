@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import math
 from einops import rearrange
-from mamba_simple import Mamba
+from src.mamba_simple import Mamba
 
 
 def split_band(x, move_num, spec_num):
@@ -121,7 +121,6 @@ class RandomMasking(nn.Module):
                 mask[b, :, i : i + patch_h, j : j + patch_w] = 0.0
 
         elif self.mode == "random_channels":
-            # Mask a fraction of spectral channels for entire spatial map
             num_mask = int(C * self.mask_size)
             mask_idx = torch.randperm(C)[:num_mask]
             mask[:, mask_idx, :, :] = 0.0
