@@ -61,7 +61,7 @@ Python packages listed in `requirements.txt`:
 
 ```bash
 # Clone the repository
-git clone https://github.com/Ayushma00/DMS2FHAD.git
+Download the repo
 cd DMS2FHAD
 
 # Create a new conda environment with Python 3.12
@@ -76,7 +76,7 @@ pip install -r requirements.txt
 
 ##  Prepare Dataset:
 
-Datasets are available in `DMS2F-HAD/data`.
+Datasets are available in `DMS2F-HAD/Data`.
 ```shell
 -- cri.mat
 -- aviris1.mat
@@ -88,12 +88,15 @@ Datasets are available in `DMS2F-HAD/data`.
 ##  Project Structure:
 ```
 📁 DMS2F-HAD/
-├── data/               
+├── Data/               
 ├── models/             
 ├── src/                
-│   ├── preprocess.py
-│   ├── utils.py
-│   ├── train.py        
+│   ├── block_utils.py
+│   ├── mask.py
+│   ├── train.py 
+│   ├── data_loader.py.py    
+│   ├── mamba_simple.py 
+│   ├── model.py     
 │   └── evaluate.py 
 ├── main.py
 ├── requirements.txt

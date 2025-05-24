@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_auc_score
 from src.block_utils import block_fold
 from skimage.transform import resize
-from datasets.HADDatasets import HADTestDataset
+# from datasets.HADDatasets import HADTestDataset
 
 def save_residuals(recon_full, orig_full, gt_mask, out_path):
     sio.savemat(out_path, {
@@ -47,13 +47,13 @@ def evaluate_model(model, dataset, device, batch_sz):
 
             gt_flat = gt_resized.astype(int).ravel()
             if np.unique(gt_flat).size < 2:
-                skip_count += 1  # [Improvement]
+                skip_count += 1  
                 continue
             auc = roc_auc_score(gt_flat, err_map.ravel())
             val_aucs.append(auc)
 
     if skip_count > 0:
-        print(f"[INFO] Skipped {skip_count} images with uniform ground truth.")  # [Improvement]
+        print(f"[INFO] Skipped {skip_count} images with uniform ground truth.")  
 
     val_auc = np.mean(val_aucs) if val_aucs else 0.0
     return val_auc, residual_maps, image_map, [np.array(o > 0, dtype=int) for o in original_maps]
@@ -69,7 +69,7 @@ def train_model(model, dataset, dataset_name, epochs, batch_sz, lr, wd, eval_dat
 
     best_auc = 0.0
     best_auc_path = None
-    test_ds = HADTestDataset(dataset_path=eval_dataset_path, resize=64, start_channel=0, channel=100)  # [Improvement]
+    test_ds = DataLoader(dataset, batch_size=batch_sz, shuffle=False, num_workers=4, pin_memory=True)
 
     model_dir = os.path.join("Models", dataset_name)
     os.makedirs(model_dir, exist_ok=True)
@@ -122,7 +122,7 @@ def train_model(model, dataset, dataset_name, epochs, batch_sz, lr, wd, eval_dat
         else:
             val_auc, recon_full, orig_full, save_gt = evaluate_model(model, test_ds, device, batch_sz)  # [Refactored]
 
-        # [Improvement] Save best model
+        
         if val_auc > best_auc:
             best_auc = val_auc
             best_auc_path = os.path.join(model_dir, "best_model_auc.pt")
@@ -133,7 +133,7 @@ def train_model(model, dataset, dataset_name, epochs, batch_sz, lr, wd, eval_dat
             save_residuals(recon_full, orig_full, save_gt, out_mat)
             print(f" --New best AUC={best_auc:.4f}, saved model and residuals.")
 
-        # [Improvement] Always save last model
+
         last_model_path = os.path.join(model_dir, "last_model.pt")
         torch.save(model.state_dict(), last_model_path)
 
