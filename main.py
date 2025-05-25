@@ -16,13 +16,8 @@ def main():
     torch.backends.cudnn.benchmark = True
 
     dataset_files = [
-        # "../Data/abu-beach-1.mat",
-        # "../Data/abu-urban-1.mat",
-        # "../Data/los-angeles-2.mat",
-        # "../Data/aviris_2.mat",
-        # "../Data/aviris_1.mat",
+       
         "Data/Cri.mat",
-        # "../Data/gulfport.mat",
         "Data/San_Diego.mat"
     ]
 
