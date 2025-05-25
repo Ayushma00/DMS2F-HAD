@@ -274,7 +274,7 @@ class AnomalyDetectionModel(nn.Module):
         # Spatial branch:
         spa_feat = feat.permute(0, 3, 1, 2)
         spatial_feat = self.spatial_conv(spa_feat)
-        spatial_feat = self.spatial_conv2(spatial_feat)
+        # spatial_feat = self.spatial_conv2(spatial_feat)
         spatial_feat = self.spatial_mamba(
             rearrange(spatial_feat, "b c h w -> b (h w) c")
         )

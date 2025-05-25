@@ -1,79 +1,54 @@
-# 📦 DMS2FHAD
+# DMS2FHAD: Dual Mamba Spectral-Spatial Fusion for Hyperspectral Anomaly Detection
 
-> **DMS2FHAD** is a Dual Mamba-based Spectral and Spatial Fusion Network for detecting anomalies in hyperspectral images.
+**DMS2FHAD** is a deep learning framework for hyperspectral anomaly detection using a dual-branch architecture that adaptively fuses spectral and spatial features with gated Mamba blocks.
 
----
-
-## 📑 Table of Contents
-
-- [About](#about)
-- [Features](#features)
-- [Software Requirements](#software-requirements)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Implementation Details](#implementation-details)
-- [Results](#results)
-- [Contributing](#contributing)
-- [License](#license)
-
----
-
-## About
-
-**DMS2FHAD** (Dual Mamba Spectral-Spatial Fusion for Hyperspectral Anomaly Detection) is a deep learning framework designed to identify anomalies in hyperspectral images by leveraging both spatial and spectral information. It employs a dual-branch architecture powered by Mamba blocks, enabling adaptive feature fusion and robust anomaly detection across complex hyperspectral datasets.
-
----
 
 ## Features
 
-- 📊 Patch-wise preprocessing of hyperspectral images.
-- 🧠 Dual-branch anomaly detection using spatial and spectral information with gated fusion.
-- 🎭 Random binary masking for self-supervised learning.
-- 📦 Modular and extendable PyTorch-based architecture.
-- 📈 Built-in evaluation and visualization tools for detection results.
+- Dual-branch Mamba architecture (spectral + spatial)
+- Gated fusion for enhanced anomaly detection
+- Patch-wise image preprocessing with random masking
+- Built-in evaluation and ROC visualization tools
+- PyTorch-based, modular, and easily extendable
 
----
-
-## Software Requirements
-
-Ensure the following dependencies are installed:
-
-- **Operating System**: Linux (Ubuntu 20+), macOS, or Windows 10+
-- **Python Version**: 3.12.9 (recommended to use [Anaconda](https://www.anaconda.com/download/))
-- **PyTorch**: 2.5.1+ with CUDA 12.1 support
-- **CUDA Toolkit**: Recommended for GPU acceleration
-- **NVIDIA GPU**: Required for training on GPU
-
-Python packages listed in `requirements.txt`:
-
-- `numpy`
-- `torch`
-- `matplotlib`
-- `scikit-learn`
-- `h5py`
-- `tqdm`
-
----
-
-## Installation (Linux + Conda)
-
-### 1. Clone and Set Up Conda Environment
+## Installation
 
 ```bash
-# Clone the repository
-Download the repo
-cd DMS2FHAD
+# 1. Create environment
+conda create -n mamba_env python=3.12 -y
+conda activate mamba_env
 
-# Create a new conda environment with Python 3.12
-conda create -n dms2fhad python=3.12 -y
-
-# Activate the environment
-conda activate dms2fhad
-
-# Install required packages
+# 2. Install dependencies
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+pip3 install timm==0.8.15dev0 mmselfsup pandas transformers openpyxl imgaug numba numpy tensorboard fvcore Ninja mmdet==2.25.3
+pip3 install --upgrade protobuf==3.20.1 scikit-image faiss-gpu
+pip3 install adeval fastprogress geomloss FrEIA mamba_ssm triton causal_conv1d numpy-hilbert-curve pyzorder
+conda install -c conda-forge accimage
 pip install -r requirements.txt
+
+## 3. Download folder
+
+Download the code folder
+cd DMS2FHAD
 ```
 
+##  Project Structure:
+```
+📁 DMS2F-HAD/
+├── Data/                          
+├── src/                
+│   ├── block_utils.py
+│   ├── mask.py
+│   ├── train.py 
+│   ├── data_loader.py.py    
+│   ├── mamba_simple.py 
+│   ├── model.py     
+│   └── analyze_residual.py 
+├── main.py
+├── requirements.txt
+└── README.md
+
+```
 ##  Prepare Dataset:
 
 Datasets are available in `DMS2F-HAD/Data`.
@@ -85,30 +60,23 @@ Datasets are available in `DMS2F-HAD/Data`.
 -- cat-island.mat
 -- SanDiego.mat
 ```
-##  Project Structure:
-```
-📁 DMS2F-HAD/
-├── Data/               
-├── models/             
-├── src/                
-│   ├── block_utils.py
-│   ├── mask.py
-│   ├── train.py 
-│   ├── data_loader.py.py    
-│   ├── mamba_simple.py 
-│   ├── model.py     
-│   └── evaluate.py 
-├── main.py
-├── requirements.txt
-└── README.md
-
-```
 
 ## Usage
-### 1. Training the Model
-
-To train the model on a specific dataset:
 
 ```bash
-python main.py --mode train --data_path data/los-angeles-1.mat --save_path outputs/ --epochs 100
+CUDA_VISIBLE_DEVICES=0 
+python main.py
+python src/analyze_residual.py
+
+```
+
+
+
+## Software Requirements
+
+- **OS**: Ubuntu 20+, macOS, or Windows 10+
+- **Python**: 3.12.9
+- **PyTorch**: ≥ 2.5.1 with CUDA 12.1
+- **GPU**: Recommended (NVIDIA,greater than A100 with CUDA installed)
+- **Package Manager**: [Anaconda](https://www.anaconda.com/download/) (recommended)
 

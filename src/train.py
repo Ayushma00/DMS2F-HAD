@@ -65,7 +65,7 @@ def train_model(model, dataset, dataset_name, epochs, batch_sz, lr, wd, eval_dat
     mse_crit = nn.MSELoss()
     l1_crit = nn.L1Loss()
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
-    scaler = GradScaler()
+    # scaler = GradScaler()
 
     best_auc = 0.0
     best_auc_path = None
@@ -73,29 +73,30 @@ def train_model(model, dataset, dataset_name, epochs, batch_sz, lr, wd, eval_dat
 
     model_dir = os.path.join("Models", dataset_name)
     os.makedirs(model_dir, exist_ok=True)
-
+    model.train()
     for epoch in range(epochs):
-        model.train()
+        
         running_loss, mse_loss_total, l1_loss_total = 0.0, 0.0, 0.0
         start_time = time.time()
 
         for masked_inputs, targets in train_loader:
-            masked_inputs = masked_inputs.to(device, non_blocking=True)
-            targets = targets.to(device, non_blocking=True)
+            masked_inputs = masked_inputs.to(device)
+            targets = targets.to(device)
 
             optimizer.zero_grad()
 
-            with autocast():
-                recon, _ = model(masked_inputs)
-                mse_loss = mse_crit(recon, targets)
-                l1_loss = l1_crit(recon, targets)
-                loss = mse_loss + 0.1 * l1_loss
+            # with autocast():
+            recon, _ = model(masked_inputs)
+            mse_loss = mse_crit(recon, targets)
+            l1_loss = l1_crit(recon, targets)
+            loss = mse_loss + 0.1 * l1_loss
 
-            if loss.requires_grad:
-                scaler.scale(loss).backward()
-                scaler.step(optimizer)
-                scaler.update()
-
+            # if loss.requires_grad:
+            #     scaler.scale(loss).backward()
+            #     scaler.step(optimizer)
+            #     scaler.update()
+            loss.backward()
+            optimizer.step()
             running_loss += loss.item() * masked_inputs.size(0)
             mse_loss_total += mse_loss.item() * masked_inputs.size(0)
             l1_loss_total += l1_loss.item() * masked_inputs.size(0)
@@ -104,23 +105,27 @@ def train_model(model, dataset, dataset_name, epochs, batch_sz, lr, wd, eval_dat
         num_samples = len(dataset)
         print(f"Epoch {epoch} — Train Loss: {running_loss / num_samples:.4f} | MSE: {mse_loss_total / num_samples:.4f} | L1: {l1_loss_total / num_samples:.4f} | Time: {epoch_time:.2f}s")
 
-        # [Refactored] Evaluation
+        
         if hasattr(dataset, 'blocks'):
-            val_loader = DataLoader(dataset.blocks, batch_size=batch_sz, shuffle=False, num_workers=4, pin_memory=True)
-            recs = []
-            for blocks in val_loader:
-                out, _ = model(blocks.to(device))
-                recs.append(out.cpu())
-            recs = torch.cat(recs, dim=0)
-            recon_full = block_fold(recs, (dataset.H, dataset.W), dataset.block_size, dataset.stride, dataset.positions)
-            orig_full = torch.tensor(dataset.image.astype(np.float32)).permute(2, 0, 1)
-            diff = (recon_full - orig_full).numpy()
-            err_map = np.linalg.norm(diff, axis=0).ravel()
-            gt_flat = dataset.gt_mask.ravel().astype(int)
-            val_auc = roc_auc_score(gt_flat, err_map)
-            save_gt = dataset.gt_mask
+            print("inside here")
+            with torch.no_grad():
+                val_loader = DataLoader(dataset.blocks, batch_size=batch_sz, shuffle=False, num_workers=4, pin_memory=True)
+                recs = []
+                for blocks in val_loader:
+                    out, _ = model(blocks.to(device))
+                    recs.append(out.cpu())
+                recs = torch.cat(recs, dim=0)
+                recon_full = block_fold(recs, (dataset.H, dataset.W), dataset.block_size, dataset.stride, dataset.positions)
+                orig_full = torch.tensor(dataset.image.astype(np.float32)).permute(2, 0, 1)
+                diff = recon_full - orig_full
+                err_map = (diff**2).sum(dim=0).numpy().ravel()
+                res_map = np.linalg.norm(diff, axis=0)
+                # err_map = np.linalg.norm(diff, axis=0).ravel()
+                gt_flat = dataset.gt_mask.ravel().astype(int)
+                val_auc = roc_auc_score(gt_flat, res_map.ravel())
+                save_gt = dataset.gt_mask
         else:
-            val_auc, recon_full, orig_full, save_gt = evaluate_model(model, test_ds, device, batch_sz)  # [Refactored]
+            val_auc, recon_full, orig_full, save_gt = evaluate_model(model, test_ds, device, batch_sz)  
 
         
         if val_auc > best_auc:
@@ -130,7 +135,7 @@ def train_model(model, dataset, dataset_name, epochs, batch_sz, lr, wd, eval_dat
 
             out_mat = os.path.join("Results", dataset_name, "residuals_best.mat")
             os.makedirs(os.path.dirname(out_mat), exist_ok=True)
-            save_residuals(recon_full, orig_full, save_gt, out_mat)
+            save_residuals(res_map, orig_full, save_gt, out_mat)
             print(f" --New best AUC={best_auc:.4f}, saved model and residuals.")
 
 
