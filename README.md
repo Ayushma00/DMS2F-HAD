@@ -1,6 +1,6 @@
-# DMS2FHAD: Dual Mamba Spectral-Spatial Fusion for Hyperspectral Anomaly Detection
+# DMS2F-HAD: Dual Mamba Spectral-Spatial Fusion for Hyperspectral Anomaly Detection
 
-**DMS2FHAD** is a deep learning framework for hyperspectral anomaly detection using a dual-branch architecture that adaptively fuses spectral and spatial features with gated Mamba blocks.
+**DMS2F-HAD** is a deep learning framework for hyperspectral anomaly detection using a dual-branch Mamba architecture that adaptively fuses spectral and spatial features with gated  blocks.
 
 
 ## Features
@@ -55,9 +55,7 @@ Datasets are available in `DMS2F-HAD/Data`.
 ```shell
 -- cri.mat
 -- aviris1.mat
--- gulfport.mat
 -- aviris2.mat
--- cat-island.mat
 -- SanDiego.mat
 ```
 
@@ -69,9 +67,12 @@ python main.py
 python src/analyze_residual.py
 
 ```
+## Demo
 
-
-
+```bash
+python src/analyze_residual.py
+```
+Results are saved in **Results** folder.
 ## Software Requirements
 
 - **OS**: Ubuntu 20+, macOS, or Windows 10+

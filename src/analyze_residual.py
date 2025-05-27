@@ -10,8 +10,8 @@ file_list = [
     "San_Diego",  # 'abu-beach-1', 'abu-urban-1', 'aviris_1', 'aviris_2',
 ]
 
-base_dir = "../Results"
-cmp_dir = os.path.join(base_dir, "Crioutput")
+base_dir = "Results"
+cmp_dir = os.path.join(base_dir, "output")
 os.makedirs(cmp_dir, exist_ok=True)
 
 # --- Main Processing Loop ---
@@ -25,13 +25,9 @@ for ds in file_list:
 
     # Load residual map and ground truth
     data = sio.loadmat(mat_path)
-    print(data.keys())
     residual = data["residual_map"]  
-    print(residual.shape)
     gt_flat = data["gt_mask"].ravel().astype(int)
-    print(gt_flat.shape)
     original = data["original"]
-    print(original.shape)
     scores = residual.ravel().astype(np.float32)
     fpr, tpr, _ = roc_curve(gt_flat, scores)
     auc = roc_auc_score(gt_flat, scores)
