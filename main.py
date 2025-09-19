@@ -23,11 +23,11 @@ def main():
 
     # [Hyperparameters]
     block_size = 16
-    stride = 8
-    epochs = 100
-    batch_size = 64
-    lr = 1e-3
-    weight_decay = 6.938599279960116e-05
+    stride = 8  
+    epochs = 150  
+    batch_size = 32  
+    lr = 5e-4  
+    weight_decay = 1e-4
 
     for data_path in dataset_files:
         ds_name = re.sub(r"\.mat$", "", os.path.basename(data_path))
