@@ -136,6 +136,7 @@ class LSSDecoderBlock(nn.Module):
         self.local5 = nn.Conv2d(channels, channels, kernel_size=5, padding=2)
         self.fuse = nn.Conv2d(channels * 3, channels, kernel_size=1)
         self.act = nn.GELU()
+        self.dropout = nn.Dropout(0.1)  # Add dropout
 
     def forward(self, x):
         B, C, H, W = x.shape
@@ -146,6 +147,7 @@ class LSSDecoderBlock(nn.Module):
         l5 = self.local5(x)
         cat = torch.cat([g, l3, l5], dim=1)
         out = self.act(self.fuse(cat)) + x
+        # out = self.dropout(out) 
         return out
 
 

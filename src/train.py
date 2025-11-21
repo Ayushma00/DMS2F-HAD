@@ -11,10 +11,15 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_auc_score
 from src.block_utils import block_fold
 from skimage.transform import resize
+from src.auc_tracker_abalation import save_auc_result
+import csv
+from datetime import datetime
+from pathlib import Path
+from src.project_paths import MODELS_DIR, RESULTS_DIR, EVAL_DATASET_DIR
 # from datasets.HADDatasets import HADTestDataset
 
 def save_residuals(recon_full, orig_full, gt_mask, out_path):
-    sio.savemat(out_path, {
+    sio.savemat(str(out_path), {
         'residual_map': recon_full,
         'gt_mask': gt_mask,
         'original': orig_full
@@ -56,10 +61,13 @@ def evaluate_model(model, dataset, device, batch_sz):
         print(f"[INFO] Skipped {skip_count} images with uniform ground truth.")  
 
     val_auc = np.mean(val_aucs) if val_aucs else 0.0
-    return val_auc, residual_maps, image_map, [np.array(o > 0, dtype=int) for o in original_maps]
+    gt_masks = [np.array(o > 0, dtype=np.uint8) for o in original_maps]
+    return val_auc, residual_maps, image_map, gt_masks
 
 
-def train_model(model, dataset, dataset_name, epochs, batch_sz, lr, wd, eval_dataset_path="../Data/HAD100Dataset/"):
+def train_model(model, dataset, dataset_name, epochs, batch_sz, lr, wd, eval_dataset_path=None, mode=None, num_decoders=None):
+    if eval_dataset_path is None:
+        eval_dataset_path = EVAL_DATASET_DIR
     device = next(model.parameters()).device
     train_loader = DataLoader(dataset, batch_size=batch_sz, shuffle=True, num_workers=4, pin_memory=True)
     mse_crit = nn.MSELoss()
@@ -71,9 +79,25 @@ def train_model(model, dataset, dataset_name, epochs, batch_sz, lr, wd, eval_dat
     best_auc_path = None
     test_ds = DataLoader(dataset, batch_size=batch_sz, shuffle=False, num_workers=4, pin_memory=True)
 
-    model_dir = os.path.join("Models", dataset_name)
-    os.makedirs(model_dir, exist_ok=True)
+    model_dir = Path(MODELS_DIR) / dataset_name
+    model_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Gate tracking disabled for simplicity
+    
     model.train()
+    
+    # Ensure all parameters are trainable
+    for param in model.parameters():
+        param.requires_grad = True
+    
+    # Count trainable parameters
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"[TRAIN] Total parameters: {total_params:,}, Trainable: {trainable_params:,}")
+    
+    if trainable_params == 0:
+        raise ValueError("No trainable parameters found! Model cannot train.")
+    
     for epoch in range(epochs):
         
         running_loss, mse_loss_total, l1_loss_total = 0.0, 0.0, 0.0
@@ -85,21 +109,40 @@ def train_model(model, dataset, dataset_name, epochs, batch_sz, lr, wd, eval_dat
 
             optimizer.zero_grad()
 
-            # with autocast():
-            recon, _ = model(masked_inputs)
-            mse_loss = mse_crit(recon, targets)
-            l1_loss = l1_crit(recon, targets)
-            loss = mse_loss + 0.1 * l1_loss
+            try:
+                # with autocast():
+                recon, _ = model(masked_inputs)
+                mse_loss = mse_crit(recon, targets)
+                l1_loss = l1_crit(recon, targets)
+                loss = mse_loss + 0.1 * l1_loss
 
-            # if loss.requires_grad:
-            #     scaler.scale(loss).backward()
-            #     scaler.step(optimizer)
-            #     scaler.update()
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item() * masked_inputs.size(0)
-            mse_loss_total += mse_loss.item() * masked_inputs.size(0)
-            l1_loss_total += l1_loss.item() * masked_inputs.size(0)
+                # Debug: Check model parameters and gradients
+                if epoch == 0:  # Only print once
+                    print(f"[DEBUG] Model parameters requiring grad: {sum(p.requires_grad for p in model.parameters())}")
+                    print(f"[DEBUG] Total parameters: {sum(p.numel() for p in model.parameters())}")
+                    print(f"[DEBUG] Output requires grad: {recon.requires_grad}")
+                    print(f"[DEBUG] Loss requires grad: {loss.requires_grad}")
+
+                # Check if loss requires gradients
+                if not loss.requires_grad:
+                    print(f"[WARNING] Loss does not require gradients. Loss value: {loss.item()}")
+                    print(f"[ERROR] Model parameters are not properly configured for training!")
+                    continue
+
+                # if loss.requires_grad:
+                #     scaler.scale(loss).backward()
+                #     scaler.step(optimizer)
+                #     scaler.update()
+                loss.backward()
+                optimizer.step()
+                running_loss += loss.item() * masked_inputs.size(0)
+                mse_loss_total += mse_loss.item() * masked_inputs.size(0)
+                l1_loss_total += l1_loss.item() * masked_inputs.size(0)
+                
+            except Exception as e:
+                print(f"[ERROR] Training step failed: {e}")
+                print(f"Input shape: {masked_inputs.shape}, Target shape: {targets.shape}")
+                continue
 
         epoch_time = time.time() - start_time
         num_samples = len(dataset)
@@ -107,13 +150,16 @@ def train_model(model, dataset, dataset_name, epochs, batch_sz, lr, wd, eval_dat
 
         
         if hasattr(dataset, 'blocks'):
-            print("inside here")
+            print("[INFO] Performing block-based validation on dataset.")
             with torch.no_grad():
                 val_loader = DataLoader(dataset.blocks, batch_size=batch_sz, shuffle=False, num_workers=4, pin_memory=True)
                 recs = []
+                val_time = time.time()
                 for blocks in val_loader:
                     out, _ = model(blocks.to(device))
                     recs.append(out.cpu())
+                val_time_end = time.time()
+                print("validation time taken::",val_time_end-val_time)
                 recs = torch.cat(recs, dim=0)
                 recon_full = block_fold(recs, (dataset.H, dataset.W), dataset.block_size, dataset.stride, dataset.positions)
                 orig_full = torch.tensor(dataset.image.astype(np.float32)).permute(2, 0, 1)
@@ -130,16 +176,63 @@ def train_model(model, dataset, dataset_name, epochs, batch_sz, lr, wd, eval_dat
         
         if val_auc > best_auc:
             best_auc = val_auc
-            best_auc_path = os.path.join(model_dir, "best_model_auc.pt")
+            best_auc_path = model_dir / "best_model_auc.pt"
             torch.save(model.state_dict(), best_auc_path)
 
-            out_mat = os.path.join("Results", dataset_name, "residuals_best.mat")
-            os.makedirs(os.path.dirname(out_mat), exist_ok=True)
+            out_mat = Path(RESULTS_DIR) / dataset_name / "residuals_best.mat"
+            out_mat.parent.mkdir(parents=True, exist_ok=True)
             save_residuals(res_map, orig_full, save_gt, out_mat)
             print(f" --New best AUC={best_auc:.4f}, saved model and residuals.")
+            
+            # Save AUC result to Excel tracker if mode and num_decoders are provided
+            if mode is not None and num_decoders is not None:
+                # Extract clean dataset name and fusion type
+                clean_dataset_name = dataset_name
+                fusion_type = "N/A"
+                
+                # Handle fusion type extraction for full mode
+                if mode == "full":
+                    # Extract fusion type from experiment name
+                    if "_simple_fusion_" in dataset_name:
+                        fusion_type = "simple"
+                    elif "_addition_fusion_" in dataset_name:
+                        fusion_type = "addition"
+                    elif "_concat_conv_fusion_" in dataset_name:
+                        fusion_type = "concat_conv"
+                    elif "_advanced_fusion_" in dataset_name:
+                        fusion_type = "advanced"
+                    elif "_cross_attention_fusion_" in dataset_name:
+                        fusion_type = "cross_attention"
+                    elif "_hierarchical_fusion_" in dataset_name:
+                        fusion_type = "hierarchical"
+                
+                # Remove suffixes to get clean dataset name
+                for suffix in [f"_{mode}_1dec_fixed", f"_{mode}_2dec_fixed", f"_{mode}_3dec_fixed", 
+                              f"_{mode}_fixed", "_fixed"]:
+                    if clean_dataset_name.endswith(suffix):
+                        clean_dataset_name = clean_dataset_name[:-len(suffix)]
+                        break
+                
+                # Remove fusion type suffix if present
+                for fusion_suffix in ["_simple_fusion", "_addition_fusion", "_concat_conv_fusion"]:
+                    if clean_dataset_name.endswith(fusion_suffix):
+                        clean_dataset_name = clean_dataset_name[:-len(fusion_suffix)]
+                        break
+                
+                additional_info = {
+                    'Epoch': epoch + 1,
+                    'Final_AUC': best_auc,
+                    'Model_Path': best_auc_path,
+                    'Fusion_Type': fusion_type
+                }
+                save_auc_result(clean_dataset_name, mode, num_decoders, best_auc, 
+                              results_dir="Results", additional_info=additional_info)
+        
+        # Save the last model only every 5 epochs to reduce disk usage
+        if (epoch + 1) % 5 == 0 or epoch == epochs - 1:
+            last_model_path = os.path.join(model_dir, "last_model.pt")
+            torch.save(model.state_dict(), last_model_path)
 
-
-        last_model_path = os.path.join(model_dir, "last_model.pt")
-        torch.save(model.state_dict(), last_model_path)
+    # Simplified - removed gate tracking and inference time logging
 
     return model

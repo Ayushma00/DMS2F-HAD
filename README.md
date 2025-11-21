@@ -35,7 +35,13 @@ cd DMS2FHAD
 ##  Project Structure:
 ```
 📁 DMS2F-HAD/
-├── Data/                          
+├── data/                          
+├── artifacts/
+│   ├── models/
+│   └── results/
+├── experiments/
+│   ├── ablation/
+├── docs/
 ├── src/                
 │   ├── block_utils.py
 │   ├── mask.py
@@ -51,7 +57,7 @@ cd DMS2FHAD
 ```
 ##  Prepare Dataset:
 
-Datasets are available in `DMS2F-HAD/Data`.
+Datasets are available in `DMS2F-HAD/data`.
 ```shell
 -- cri.mat
 -- aviris1.mat
@@ -72,7 +78,7 @@ python src/analyze_residual.py
 ```bash
 python src/analyze_residual.py
 ```
-Results are saved in **Results** folder.
+Results are saved in **artifacts/results/current**.
 ## Software Requirements
 
 - **OS**: Ubuntu 20+, macOS, or Windows 10+
@@ -80,4 +86,3 @@ Results are saved in **Results** folder.
 - **PyTorch**: ≥ 2.5.1 with CUDA 12.1
 - **GPU**: Recommended (NVIDIA,greater than A100 with CUDA installed)
 - **Package Manager**: [Anaconda](https://www.anaconda.com/download/) (recommended)
-
